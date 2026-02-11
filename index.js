@@ -41,7 +41,6 @@ const COUNTRY_ENGINE = USA_ENGINE;
         let suppressCategoryHover = false;
         let openFilterMenu = null;
         let lockedInfoIcon = null;
-        let openInfoIcon = null;
 
 
 // Fabric classification HTML moved to JS so it can be reused and localized
@@ -789,8 +788,6 @@ const FABRIC_CLASSIFICATION_HTML = `
                         const trigger = document.querySelector(".category-trigger");
                         if (trigger) trigger.textContent = `${mainCategory} ▸ ${productCategory}`;
 
-                        console.log('handleCategorySelection called:', { mainCategory, productCategory, selectedFilters });
-
                         // CATEGORY DESCRIPTION / INFO ICON
                         try {
                             const infoIcon = document.getElementById("categoryInfoIcon");
@@ -1130,10 +1127,6 @@ const FABRIC_CLASSIFICATION_HTML = `
                                 if (parentMain) {
                                     parentMain.classList.add("active");
                                 }
-                            
-                                // ✅ Save selected category
-                                selectedFilters.category = sub;
-                                selectedFilters.uiMainCategory = mainCat;
                             
                                 // ✅ Update trigger
                                 document.querySelector(".category-trigger").textContent =
