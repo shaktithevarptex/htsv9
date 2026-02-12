@@ -39,8 +39,9 @@ const COUNTRY_ENGINE = USA_ENGINE;
         let highlightEnabled = false;
         let categoryMenuOpen = false;
         let suppressCategoryHover = false;
-        let openFilterMenu = null;
-        let lockedInfoIcon = null;
+        window.openFilterMenu = null;
+        window.lockedInfoIcon = null;
+        window.openInfoIcon = null;
 
 
 // Fabric classification HTML moved to JS so it can be reused and localized
@@ -553,7 +554,6 @@ const FABRIC_CLASSIFICATION_HTML = `
                 country: '',
                 exportingCountry: '',
                 importingCountry: COUNTRY_ENGINE.getImportingCountry(),
-                rateType: 'MFN',
                 feature: 'All'
             };
 
@@ -900,7 +900,6 @@ const FABRIC_CLASSIFICATION_HTML = `
                     selectedFilters.material = 'All';
                     selectedFilters.country = '';
                     selectedFilters.exportingCountry = '';
-                    selectedFilters.rateType = 'MFN';
                     selectedFilters.feature = 'All';
 
                     // 🔽 Reset filter menu triggers
@@ -1001,67 +1000,31 @@ const FABRIC_CLASSIFICATION_HTML = `
                 }
 
                 function initializeCountries() {
-
                     const trade = COUNTRY_ENGINE.getTradeConfig();
-
+                
                     const countries = [
-                        ...trade.column2Countries.map(name => ({ name, type: 'Column 2' })),
-                        ...trade.specialCountries.map(c => ({ name: c.name, type: 'Special' })),
-
-                        // ⭐ Default general countries (shared across all engines)
-                        { name: 'India', type: 'General' },
-                        { name: 'China', type: 'General' },
-                        { name: 'Vietnam', type: 'General' },
-                        { name: 'Bangladesh', type: 'General' },
-                        { name: 'Pakistan', type: 'General' },
-                        { name: 'Indonesia', type: 'General' },
-                        { name: 'Turkey', type: 'General' },
-                        { name: 'Mexico', type: 'General' },
-                        { name: 'Brazil', type: 'General' }
+                        ...trade.column2Countries,
+                        ...trade.specialCountries.map(c => c.name),
+                
+                        // default general countries
+                        "India",
+                        "China",
+                        "Vietnam",
+                        "Bangladesh",
+                        "Pakistan",
+                        "Indonesia",
+                        "Turkey",
+                        "Mexico",
+                        "Brazil"
                     ];
-
-                    allCountries = countries.sort((a, b) => a.name.localeCompare(b.name));
-
+                
+                    allCountries = [...new Set(countries)]
+                        .sort((a, b) => a.localeCompare(b))
+                        .map(name => ({ name }));
+                
                     buildCountriesFilter();
                 }
 
-                function getRateType(countryName) {
-
-                    const trade = COUNTRY_ENGINE.getTradeConfig();
-
-                    if (trade.column2Countries.includes(countryName)) {
-                        return 'Column 2';
-                    }
-
-                    if (trade.specialCountries.some(c => c.name === countryName)) {
-                        return 'Special';
-                    }
-
-                    return 'General';
-                }
-
-
-                function getRate(item, rateType) {
-                    let rateField = '';
-                    if (rateType === 'Column 2') {
-                        rateField = 'other';
-                    } else if (rateType === 'Special') {
-                        rateField = 'special';
-                    } else {
-                        rateField = 'general';
-                    }
-                    let rate = item[rateField];
-                    if (!rate || rate === '' || rate === 'N/A') {
-                        const parentItem = findParentWithRate(item, rateField);
-                        if (parentItem) {
-                            return { value: parentItem[rateField], inherited: true };
-                        }
-                        return { value: 'N/A', inherited: false };
-                    }
-                    return { value: rate, inherited: false };
-                }
-  
-                
                 function buildCategoryMenu() {
                     const container = document.getElementById("categoryMenu");
                     container.innerHTML = "";
@@ -1077,8 +1040,6 @@ const FABRIC_CLASSIFICATION_HTML = `
                 Object.entries(visibleCategories)
                 .sort((a, b) => a[0].localeCompare(b[0])) // ⭐ sort main categories alphabetically
                 .forEach(([mainCat, subCats]) => {
-
-
 
                         const mainDiv = document.createElement("div");
                         mainDiv.className = "category-item";
@@ -1854,7 +1815,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                     displayResults(
                         primaryResults.map(r => r.item),
                         relatedResults.map(r => r.item),
-                        getRateType(exportingCountry),
+                        exportingCountry,
                         keywordList
                     );
                 }
@@ -2076,7 +2037,14 @@ const FABRIC_CLASSIFICATION_HTML = `
                     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 }
                 
-                function displayResults(primaryResults, secondaryResults, rateType, searchWords) {
+                function getRateLabel(column){
+                    if(column === "other") return "Column 2";
+                    if(column === "special") return "Special";
+                    return "General";
+                }
+
+
+                function displayResults(primaryResults, secondaryResults, exportingCountry, searchWords){
                         const container = document.getElementById('resultsContainer');
                         const totalResults = primaryResults.length + secondaryResults.length;
                         
@@ -2139,7 +2107,12 @@ const FABRIC_CLASSIFICATION_HTML = `
                                 );
 
 
-                                const rateInfo = getRate(item, rateType);
+                                const rateInfo = COUNTRY_ENGINE.getDutyRate(
+                                    item,
+                                    exportingCountry,
+                                    findParentWithRate
+                                );
+                                
 
                                 const leafGenders = getGenderFromLeafAndParent(item);
 
@@ -2164,7 +2137,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                     <tr
                                         class="hts-row"
                                         data-description="${normalizeText(fullDescription)}"
-                                        onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${rateType}")'
+                                        onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${exportingCountry}")'
                                     >
                                         <td class="row-number">${index + 1}</td>
                                         <td>
@@ -2182,7 +2155,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                                 <button
                                                     class="hts-info-btn"
                                                     title="View details"
-                                                    onclick='event.stopPropagation(); showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${rateType}")'
+                                                    onclick='event.stopPropagation(); showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${exportingCountry}")'
                                                 >
                                                     i
                                                 </button>
@@ -2193,7 +2166,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                             ${highlightedDescription}
                                             ${genderBadge}
                                         </td>
-                                        <td>${rateType}</td>
+                                        <td>${getRateLabel(rateInfo.column)}</td>
                                         <td>${rateInfo.value}</td>
                                     </tr>
                                 `;
@@ -2227,7 +2200,11 @@ const FABRIC_CLASSIFICATION_HTML = `
                             secondaryResults.forEach((item, index) => {
                                 const fullDescription = getFullDescription(item);
                                 const highlightedDescription = highlightInheritedParts(fullDescription,item.description,searchWords,genderTerms,fabricTerms,featureTerms);
-                                const rateInfo = getRate(item, rateType);
+                                const rateInfo = COUNTRY_ENGINE.getDutyRate(
+                                    item,
+                                    exportingCountry,
+                                    findParentWithRate
+                                );
 
                                 const leafGenders = getGenderFromLeafAndParent(item);
 
@@ -2249,7 +2226,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                     : '';
 
                                 html += `
-                                    <tr onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${rateType}")'>
+                                    <tr onclick='event.stopPropagation(); showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${exportingCountry}")'>
                                         <td class="row-number">${index + 1}</td>
                                         <td>
                                     <div class="hts-code-wrapper">
@@ -2266,7 +2243,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                         <button
                                             class="hts-info-btn"
                                             title="View details"
-                                            onclick='event.stopPropagation(); showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${rateType}")'
+                                            onclick='event.stopPropagation(); showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${exportingCountry}")'
                                         >
                                             i
                                         </button>
@@ -2274,7 +2251,7 @@ const FABRIC_CLASSIFICATION_HTML = `
                                 </td>
 
                                         <td>${highlightedDescription}</td>
-                                        <td>${rateType}</td>
+                                        <td>${getRateLabel(rateInfo.column)}</td>
                                         <td>${rateInfo.value}</td>
                                     </tr>
                                 `;
@@ -2291,18 +2268,20 @@ const FABRIC_CLASSIFICATION_HTML = `
                         container.innerHTML = html;
                     }
   
-                function showDetails(item, rateType) {
+                    function showDetails(item, exportingCountry) {
                         const modal = document.getElementById('detailModal');
                         const modalBody = document.getElementById('modalBody');
                         const htsCode = item.htsno;
 
-                        let rateField = '';
-                        if (rateType === 'Column 2') rateField = 'other';
-                        else if (rateType === 'Special') rateField = 'special';
-                        else rateField = 'general';
-
-                        let rate = getRate(item, rateType).value;
-                        let isInherited = false;
+                        const rateInfo = COUNTRY_ENGINE.getDutyRate(
+                            item,
+                            exportingCountry,
+                            findParentWithRate
+                        );
+                        
+                        let rate = rateInfo.value;
+                        let rateType = getRateLabel(rateInfo.column);
+                        let isInherited = rateInfo.inherited;
                         let inheritedFrom = null;
 
                         let breakdownHTML = '<div>';
@@ -2735,7 +2714,7 @@ document.querySelectorAll(".filter-trigger").forEach(trigger => {
                         if (country.name === currentValue) {
                             div.classList.add('selected');
                         }
-                        div.textContent = country.name + (country.type ? ` (${country.type})` : '');
+                        div.textContent = country.name;
                         div.onclick = () => selectFilterItem('country', country.name, country.name);
                         menu.appendChild(div);
                     });
@@ -2803,7 +2782,6 @@ window.importJSON = importJSON;
 window.closeModal = closeModal;
 window.showDetails = showDetails;
 window.copyHTSCode = copyHTSCode;
-
 
     initializeCountries();
     buildCategoryMenu();
