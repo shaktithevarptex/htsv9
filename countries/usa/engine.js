@@ -1,5 +1,8 @@
 import { USA_TRADE_CONFIG } from "./config.js";
 import { COUNTRY_CODE_MAP } from "./countryCodes.js";
+import { USA_SPECIAL_CODES } from "./specialCountries.js";
+
+
 
 export const USA_ENGINE = {
     name: "USA",
@@ -15,20 +18,28 @@ export const USA_ENGINE = {
     getRateColumn(countryName, item, findParentWithRateFn) {
         if (!item) return "general";
     
+        
         const trade = this.getTradeConfig();
     
-        // 1️⃣ Column 2 always wins
+        // 1️⃣ Column 2 always wins (sanctions)
         if (trade.column2Countries.includes(countryName)) {
             return "other";
         }
     
+                // Get ISO code once
         const code = COUNTRY_CODE_MAP[countryName];
         if (!code) return "general";
+
+        // 2️⃣ GLOBAL SPECIAL COUNTRIES (ISO based) 🔥
+        if (USA_SPECIAL_CODES.includes(code)) {
+            return "special";
+        }
+
+        // 3️⃣ Existing SPECIAL column text logic (per-HS code)
+
     
-        // 2️⃣ Look for SPECIAL text on this row OR parents 🔥
         let specialText = item.special || "";
     
-        // ⭐ NEW — inherit SPECIAL column text from parents
         if (!specialText || specialText === "N/A") {
             const parent = findParentWithRateFn?.(item, "special");
             if (parent && parent.special) {
@@ -44,8 +55,10 @@ export const USA_ENGINE = {
             return "special";
         }
     
+        // 4️⃣ fallback
         return "general";
     },
+    
 
     // ⭐ PRIVATE — inherit rate from parent nodes
     inheritRate(item, rateField, findParentWithRateFn) {

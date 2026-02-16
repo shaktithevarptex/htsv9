@@ -2638,10 +2638,12 @@ document.querySelectorAll(".filter-trigger").forEach(trigger => {
                     
                     // Special handling for country filter
                     if (filterType === 'country') {
-                        selectedFilters.exportingCountry = value;
+                        selectedFilters.country = value;          // ⭐ MISSING LINE
+                        selectedFilters.exportingCountry = value; // engine value
                         attemptAutoSearch();
                         return;
                     }
+                    
                     
                     // Trigger search if needed
                     if (filterType === 'material') {
