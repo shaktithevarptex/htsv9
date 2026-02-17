@@ -1,7 +1,6 @@
 import { USA_TRADE_CONFIG } from "./config.js";
 import { COUNTRY_CODE_MAP } from "./countryCodes.js";
-import { USA_SPECIAL_CODES } from "./specialCountries.js";
-
+import { USA_PROGRAM_COUNTRIES } from "./programCountries.js";
 
 
 export const USA_ENGINE = {
@@ -16,46 +15,52 @@ export const USA_ENGINE = {
     },
 
     getRateColumn(countryName, item, findParentWithRateFn) {
+
         if (!item) return "general";
     
-        
         const trade = this.getTradeConfig();
     
-        // 1️⃣ Column 2 always wins (sanctions)
+        // 1️⃣ Column 2 sanctions (highest priority)
         if (trade.column2Countries.includes(countryName)) {
             return "other";
         }
     
-                // Get ISO code once
-        const code = COUNTRY_CODE_MAP[countryName];
-        if (!code) return "general";
-
-        // 2️⃣ GLOBAL SPECIAL COUNTRIES (ISO based) 🔥
-        if (USA_SPECIAL_CODES.includes(code)) {
-            return "special";
-        }
-
-        // 3️⃣ Existing SPECIAL column text logic (per-HS code)
-
+        // ISO code (AF, JO, AU etc)
+        const iso = COUNTRY_CODE_MAP[countryName];
+        if (!iso) return "general";
     
+        // 2️⃣ Get SPECIAL column text (inherit if empty)
         let specialText = item.special || "";
     
         if (!specialText || specialText === "N/A") {
             const parent = findParentWithRateFn?.(item, "special");
-            if (parent && parent.special) {
-                specialText = parent.special;
-            }
+            if (parent?.special) specialText = parent.special;
         }
     
         if (!specialText) return "general";
     
-        const regex = new RegExp(`\\b${code}\\b`, "i");
+        specialText = specialText.toUpperCase();
     
-        if (regex.test(specialText)) {
+        // 3️⃣ Direct FTA match (JO, AU, SG, S, P etc)
+        const isoRegex = new RegExp(`\\b${iso}\\b`, "i");
+        if (isoRegex.test(specialText)) {
             return "special";
         }
     
-        // 4️⃣ fallback
+        // 4️⃣ Program match (loop through USA_PROGRAM_COUNTRIES)
+        for (const [programCode, countries] of Object.entries(USA_PROGRAM_COUNTRIES)) {
+    
+            // is this country part of this program?
+            if (!countries.includes(countryName)) continue;
+    
+            // does the HS row allow this program?
+            const progRegex = new RegExp(`\\b${programCode}\\b`, "i");
+            if (progRegex.test(specialText)) {
+                return "special";
+            }
+        }
+    
+        // 5️⃣ fallback → General column
         return "general";
     },
     
