@@ -178,7 +178,7 @@ const FABRIC_CLASSIFICATION_HTML = `
         };
 
         const CATEGORY_KEYWORDS = {
-                "Overcoats": ["overcoats"],
+                "Overcoats": ["overcoats","Overcoats"],
                 "Carcoats": ["carcoats"],
                 "Capes": ["capes"],
                 "Cloaks": ["cloaks"],
@@ -972,6 +972,16 @@ const FABRIC_CLASSIFICATION_HTML = `
                     document.querySelectorAll(".fabric-search").forEach(input => {
                         input.value = "";
                     });
+
+                    // 🌍 CLEAR COUNTRY DROPDOWN SEARCH (the missing part)
+                    const countrySearchInput = document.querySelector("#countryMenu input[type='text']");
+                    if (countrySearchInput) {
+                        countrySearchInput.value = "";
+                        
+                        // 🔄 trigger input event so full list shows again
+                        countrySearchInput.dispatchEvent(new Event("input"));
+                    }
+
 
                     // 🔄 RESET FILTERED FABRIC LIST
                     document.querySelectorAll("#fabricInfoTooltip li").forEach(li => {

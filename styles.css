@@ -155,6 +155,58 @@ input[type="text"] {
     border-collapse: collapse;
     margin-top: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    table-layout: fixed;   /* ⭐ THIS IS THE KEY */
+}
+
+/* Column sizing */
+.results-table th:nth-child(1),
+.results-table td:nth-child(1) {
+    width: 52px;   /* # column */
+}
+
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
+    width: 150px;  /* HTS Code */
+}
+
+.results-table th:nth-child(3),
+.results-table td:nth-child(3) {
+    width: auto;   /* Description takes remaining space */
+}
+
+/* Allow table cells to wrap nicely */
+.results-table th,
+.results-table td {
+    word-wrap: break-word;     /* old name */
+    overflow-wrap: break-word; /* modern */
+}
+
+/* Rate Type column */
+.results-table th:nth-child(4),
+.results-table td:nth-child(4) {
+    width: 120px;
+}
+
+/* Rate of Duty column */
+.results-table th:nth-child(5),
+.results-table td:nth-child(5) {
+    width: 150px;
+}
+
+
+
+/* Prevent table from spilling outside container */
+.results-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* Make ALL cells respect column width */
+.results-table th,
+.results-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .results-table th {
@@ -1188,6 +1240,17 @@ pointer-events: auto;
     gap: 8px;
 }
 
+.country-search{
+    margin: 5px;
+}
+
+.country-search:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 1px #667eea33;
+}
+
+
 .hts-code-link {
     font-weight: 600;
     color: #1f3cff;
@@ -1211,4 +1274,89 @@ pointer-events: auto;
 .hts-info-btn:hover {
     background: #667eea;
     color: #fff;
+}
+
+/* =========================================
+   📱 RESPONSIVE MOBILE / SMALL SCREEN TWEAKS
+========================================= */
+
+@media (max-width: 768px) {
+
+    /* overall container padding */
+    .container {
+        padding: 18px;
+    }
+
+    /* Page title smaller */
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    /* Filter labels */
+    label {
+        font-size: 12px;
+    }
+
+    /* Filter triggers / dropdown buttons */
+    .filter-trigger,
+    .category-trigger {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    /* Filter grid tighter */
+    .filters-section {
+        gap: 10px;
+    }
+
+    /* Table header text */
+    .results-table th {
+        font-size: 12px;
+        padding: 10px 8px;
+    }
+
+    /* Table body text */
+    .results-table td {
+        font-size: 12px;
+        padding: 10px 8px;
+    }
+
+    /* Result stats boxes */
+    .results-count {
+        font-size: 14px;
+    }
+
+    .count-item {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    /* HTS code link size */
+    .hts-code-link {
+        font-size: 12px;
+    }
+
+    /* Modal text */
+    .modal-content {
+        width: 95%;
+        padding: 18px;
+    }
+
+    .modal-body {
+        font-size: 13px;
+    }
+
+    /* Buttons smaller */
+    .icon-btn {
+        padding: 6px;
+    }
+
+    /* Dropdown menu text */
+    .filter-menu-item,
+    .category-item,
+    .submenu-item {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
 }
