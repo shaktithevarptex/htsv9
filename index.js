@@ -13,10 +13,15 @@ import {getFilterData,getFilterLabel,toggleFilterMenu,buildFilterMenu,selectFilt
 import { initCountryMenu, buildCountriesFilter } from "./ui/countryMenu.js";
 import {initHTSEngine,searchHTSByFilters,normalizeText,getFullDescription,getGenderFromLeafAndParent,findParentWithRate,getRateLabel,escapeRegExp,getHierarchyPath} from "./engine/htsEngine.js";
 import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedParts,renderHTSHierarchy,showDetails,displayResults} from "./engine/resultsRenderer.js";
-  
-  
-  
+import {initAppUI,showStatus,checkAdminMode,initializeCountries,loadFlatFile} from "./ui/appUI.js";
+import { resetAllFilters, toggleHighlight, clearResults } from "./ui/interactions.js";
+import {enforceMaterialNeutralUI,enforceGenderNeutralUI,handleAccessoriesGenderRule} from "./ui/filterRules.js";
+import {initDOMEvents,setupCategoryTrigger,setupFilterTriggers,setupGlobalClickCloser} from "./ui/domEvents.js";
+    
     const COUNTRY_ENGINE = USA_ENGINE;
+
+    initAppUI(COUNTRY_ENGINE);
+
 
     const FILTER_DATA = getFilterData(COUNTRY_ENGINE, {
         closeLockedInfoTooltip,
@@ -83,23 +88,6 @@ import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedPa
             return null;
         }
 
-            function checkAdminMode() {
-                // 🔑 Admin conditions (any one can enable admin)
-                const isAdminByURL = new URLSearchParams(window.location.search).get("admin") === "true";
-                const isAdminByStorage = localStorage.getItem("hts_admin") === "true";
-
-                const isAdmin = isAdminByURL || isAdminByStorage;
-
-                const adminSection = document.getElementById("adminSection");
-
-                if (isAdmin && adminSection) {
-                    adminSection.style.display = "block";
-                    console.log("✅ Admin mode enabled");
-                } else {
-                    if (adminSection) adminSection.style.display = "none";
-                    console.log("ℹ️ Admin mode disabled");
-                }
-            }
 
             function closeLockedInfoTooltip() {
                 if (appState.lockedInfoIcon) {
@@ -109,31 +97,6 @@ import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedPa
                 }
             }
         
-
-            const categoryTrigger = document.querySelector(".category-trigger");
-            const categoryMenu = document.getElementById("categoryMenu");
-            
-            categoryTrigger.addEventListener("click", e => {
-                e.stopPropagation();
-            
-                // 🔑 CLOSE ALL FILTER MENUS FIRST
-                document.querySelectorAll(".filter-menu.show").forEach(menu => {
-                    menu.classList.remove("show");
-                });
-                appState.openFilterMenu = null;
-            
-                // Toggle category
-                if (appState.categoryMenuOpen) {
-                    closeAllCategoryMenus();
-                    return;
-                }
-            
-                categoryMenu.style.display = "block";
-                appState.categoryMenuOpen = true;
-            });
-            
-            
-
                 window.copyHTSCode = function (code, btn) {
                 navigator.clipboard.writeText(code).then(() => {
                     btn.innerHTML = CHECK_SVG;
@@ -144,81 +107,6 @@ import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedPa
                     console.error("Clipboard copy failed:", err);
                 });
             };
-
-            function enforceMaterialNeutralUI(category) {
-                const materialSelect = document.getElementById("materialFilter");
-                const materialTrigger = document.getElementById('materialTrigger');
-                const materialMenu = document.getElementById('materialMenu');
-                const materialNote = document.getElementById("materialNote");
-
-                const isNeutral = MATERIAL_NEUTRAL_CATEGORIES.has(normalizeText(category));
-
-                if (!category) {
-                    // No category selected: restore UI to current selection
-                    if (materialSelect) {
-                        try { materialSelect.disabled = false; } catch(e){}
-                    }
-                    if (materialTrigger) {
-                        materialTrigger.textContent = getFilterLabel('material', selectedFilters.material) + ' ▾';
-                    }
-                    if (materialMenu) {
-                        materialMenu.querySelectorAll('.filter-menu-item.disabled').forEach(i => i.classList.remove('disabled'));
-                    }
-                    if (materialNote) materialNote.classList.remove('show');
-                    return;
-                }
-
-                if (isNeutral) {
-                    // Force material to All when category is material-neutral
-                    selectedFilters.material = 'All';
-                    if (materialSelect) {
-                        try { materialSelect.value = 'All'; materialSelect.disabled = true; } catch(e){}
-                    }
-                    if (materialTrigger) materialTrigger.textContent = getFilterLabel('material', selectedFilters.material) + ' ▾';
-                    if (materialMenu) {
-                        materialMenu.querySelectorAll('.filter-menu-item').forEach(item => {
-                            if (!/All/i.test(item.textContent)) item.classList.add('disabled');
-                        });
-                    }
-                    if (materialNote) {
-                        materialNote.innerHTML = 'Classified mainly by article type & fiber content, regardless of knit/woven construction';
-                        materialNote.classList.add('show');
-                    }
-                } else {
-                    // Not neutral: restore material selection (do not overwrite user's choice)
-                    if (materialSelect) {
-                        try { materialSelect.disabled = false; } catch(e){}
-                    }
-                    if (materialTrigger) materialTrigger.textContent = getFilterLabel('material', selectedFilters.material) + ' ▾';
-                    if (materialMenu) {
-                        materialMenu.querySelectorAll('.filter-menu-item.disabled').forEach(i => i.classList.remove('disabled'));
-                    }
-                    if (materialNote) materialNote.classList.remove('show');
-                }
-        }
-
-            function toggleHighlight() {
-
-                if (appState.isResetting) return;
-                if (!selectedFilters.category || !selectedFilters.exportingCountry) return;
-
-                appState.highlightEnabled = !appState.highlightEnabled;
-
-                const btn = document.getElementById("toggleHighlightBtn");
-
-                btn.classList.toggle("active", appState.highlightEnabled);
-                btn.setAttribute("aria-pressed", appState.highlightEnabled);
-                btn.setAttribute(
-                    "aria-label",
-                    appState.highlightEnabled ? "Disable highlight" : "Enable highlight"
-                );
-
-                btn.dataset.tooltip = appState.highlightEnabled
-                    ? "Highlight ON"
-                    : "Highlight OFF";
-
-                searchHTSByFilters();
-                }
 
                 function showCopied(btn) {
                 btn.innerHTML = CHECK_SVG;
@@ -239,164 +127,7 @@ import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedPa
                     document.body.removeChild(ta);
                     showCopied(btn);
                 }
-
-                function resetDropdownSelection(menuSelector, defaultValue = "All") {
-                    const menu = document.querySelector(menuSelector);
-                    if (!menu) return;
-                
-                    const items = menu.children; // 🔑 key fix
-                
-                    Array.from(items).forEach(item => {
-                        item.classList.remove("selected", "active", "checked");
-                
-                        const value =
-                            item.dataset?.value ||
-                            item.textContent.trim();
-                
-                        if (value === defaultValue) {
-                            item.classList.add("selected");
-                        }
-                    });
-                }
             
-                function resetAllFilters() {
-                    appState.isResetting = true; // 🔒 lock everything
-
-                    // 🔄 Reset state
-                    selectedFilters.uiMainCategory = '';
-                    selectedFilters.category = '';
-                    selectedFilters.gender = 'All';
-                    selectedFilters.fabric = 'All';
-                    selectedFilters.material = 'All';
-                    selectedFilters.country = '';
-                    selectedFilters.exportingCountry = '';
-                    selectedFilters.feature = 'All';
-
-                    // 🔽 Reset filter menu triggers
-                    document.getElementById('genderTrigger').textContent = 'All ▾';
-                    document.getElementById('fabricTrigger').textContent = 'All ▾';
-                    document.getElementById('materialTrigger').textContent = 'All ▾';
-                    document.getElementById('featureTrigger').textContent = 'All ▾';
-                    document.getElementById('countryTrigger').textContent = 'Select Country ▾';
-
-                    closeAllCategoryMenus();
-
-                    // 🧹 RESET CATEGORY + SUBCATEGORY UI STATES
-                    document.querySelectorAll('.category-item')
-                        .forEach(item => {
-                            item.classList.remove('selected', 'active');
-                        });
-
-                    document.querySelectorAll('.submenu-item')
-                        .forEach(item => {
-                            item.classList.remove('selected');
-                        });
-
-
-                    // ❌ Hide notes
-                    document.getElementById("genderNote").style.display = "none";
-                    document.getElementById("materialNote").classList.remove("show");
-
-                    // 🔽 Reset category UI
-                    document.querySelector('.category-trigger').textContent = 'Select Category ▾';
-
-
-                    // 🔆 RESET HIGHLIGHT (✅ correct way)
-                    appState.highlightEnabled = false;
-
-                    const highlightBtn = document.getElementById("toggleHighlightBtn");
-                    highlightBtn.classList.remove("active");
-                    highlightBtn.setAttribute("aria-pressed", "false");
-                    highlightBtn.setAttribute("aria-label", "Enable highlight");
-                    highlightBtn.dataset.tooltip = "Highlight OFF";
-
-
-                    // ✅ RESET DROPDOWN MENU CHECKS
-                    // ✅ RESET DROPDOWN MENU CHECKS
-                    resetDropdownSelection("#genderMenu", "All");
-                    resetDropdownSelection("#materialMenu", "All");
-                    resetDropdownSelection("#fabricMenu", "All");
-                    resetDropdownSelection("#featureMenu", "All");
-                    resetDropdownSelection("#countryMenu", ""); // 🔥 fixed ID
-
-
-
-                    // ❌ Hide category description
-                    const infoIcon = document.getElementById("categoryInfoIcon");
-                    const tooltip = document.getElementById("categoryInfoTooltip");
-
-                    infoIcon.classList.remove("active");
-                    infoIcon.classList.add("disabled");
-
-                    tooltip.innerHTML = "Select a category to see its definition.";
-
-                    document.querySelectorAll(".fabric-search").forEach(input => {
-                        input.value = "";
-                    });
-
-                    // 🌍 CLEAR COUNTRY DROPDOWN SEARCH (the missing part)
-                    const countrySearchInput = document.querySelector("#countryMenu input[type='text']");
-                    if (countrySearchInput) {
-                        countrySearchInput.value = "";
-                        
-                        // 🔄 trigger input event so full list shows again
-                        countrySearchInput.dispatchEvent(new Event("input"));
-                    }
-
-
-                    // 🔄 RESET FILTERED FABRIC LIST
-                    document.querySelectorAll("#fabricInfoTooltip li").forEach(li => {
-                        li.style.display = "";
-                    });
-
-                    // 🔓 unlock category menu after reset
-                    buildCategoryMenu();
-
-                    // 🧹 Clear results
-                    clearResults();
-
-                    // 🔓 unlock
-                    setTimeout(() => {
-                        appState.isResetting = false;
-                    }, 0);
-
-                    }
-
-
-                async function loadFlatFile() {
-                    try {
-                        const res = await fetch("data/master.json");
-                        const data = await res.json();
-                        appState.masterData = data;
-                        document.getElementById("totalResults").innerText = appState.masterData.length;
-                        showStatus(`Master file loaded: ${appState.masterData.length} records`);
-                        console.log("HTS Master file loaded:", data.length);
-                    } catch (e) {
-                        console.warn("No master.json file found");
-                        showStatus("No master.json found. Please import JSON files manually.", true);
-                    }
-                }
-
-                function initializeCountries() {
-                    // 🌍 All countries from ISO map (real world list)
-                    const countries = Object.keys(COUNTRY_CODE_MAP);
-                
-                    appState.allCountries = countries
-                        .sort((a, b) => a.localeCompare(b))
-                        .map(name => ({ name }));
-                
-                    buildCountriesFilter();
-                }
-
-                function showStatus(message, isError = false) {
-                    const statusDiv = document.getElementById('statusMessage');
-                    statusDiv.textContent = message;
-                    statusDiv.className = 'status-message ' + (isError ? 'status-error' : 'status-success');
-                    statusDiv.style.display = 'block';
-                    setTimeout(() => {
-                        statusDiv.style.display = 'none';
-                    }, 3000);
-                }
 
                 function importJSON() {
                     const fileInput = document.getElementById('jsonFileInput');
@@ -427,132 +158,6 @@ import {initResultsRenderer,getDirectChildren,highlightText,highlightInheritedPa
                         reader.readAsText(file);
                     });
                 }
-
-                function enforceGenderNeutralUI(category) {
-                    const genderSelect = document.getElementById("genderFilter");
-                    const genderTrigger = document.getElementById('genderTrigger');
-                    const genderMenu = document.getElementById('genderMenu');
-                    const genderNote = document.getElementById("genderNote");
-
-                    const safeEnableAllLegacy = () => {
-                        if (genderSelect && genderSelect.options) {
-                            try { Array.from(genderSelect.options).forEach(o => o.disabled = false); } catch (e) {}
-                        }
-                    };
-
-                    if (!category) {
-                        // 🔄 RESET STATE
-                        safeEnableAllLegacy();
-                        if (genderTrigger) genderTrigger.textContent = getFilterLabel('gender', selectedFilters.gender) + ' ▾';
-                        if (genderMenu) genderMenu.querySelectorAll('.filter-menu-item.disabled').forEach(i => i.classList.remove('disabled'));
-                        if (genderNote) genderNote.style.display = "none";
-                        return;
-                    }
-
-                    const isNeutral = GENDER_NEUTRAL_CATEGORIES.has(normalizeText(category));
-
-                    if (!isNeutral) {
-                        if (selectedFilters.uiMainCategory !== "Accessories") {
-                            safeEnableAllLegacy();
-                            if (genderMenu) genderMenu.querySelectorAll('.filter-menu-item.disabled').forEach(i => i.classList.remove('disabled'));
-                            if (genderNote) genderNote.style.display = "none";
-                        }
-                        return;
-                    }
-
-                    // For neutral categories, force All
-                    selectedFilters.gender = "All";
-                    if (genderSelect) {
-                        try { genderSelect.value = 'All'; } catch(e) {}
-                    }
-                    if (genderTrigger) genderTrigger.textContent = getFilterLabel('gender', selectedFilters.gender) + ' ▾';
-
-                    if (genderSelect && genderSelect.options) {
-                        try { Array.from(genderSelect.options).forEach(o => { o.disabled = o.value !== 'All'; }); } catch(e) {}
-                    }
-
-                    if (genderMenu) {
-                        genderMenu.querySelectorAll('.filter-menu-item').forEach(item => {
-                            if (!/All/i.test(item.textContent)) item.classList.add('disabled');
-                        });
-                    }
-
-                    if (genderNote) {
-                        genderNote.innerHTML = "Women foundation garments / gender-neutral support accessories";
-                        genderNote.style.display = "block";
-                    }
-                }
-
-                function handleAccessoriesGenderRule(mainCategory) {
-                    const genderSelect = document.getElementById('genderFilter');
-                    const genderTrigger = document.getElementById('genderTrigger');
-                    const genderMenu = document.getElementById('genderMenu');
-                    const genderNote = document.getElementById('genderNote');
-
-                    if (mainCategory === "Accessories") {
-                        // 🔒 Force gender = All
-                        selectedFilters.gender = 'All';
-
-                        // If legacy <select> exists, update it
-                        if (genderSelect) {
-                            try {
-                                genderSelect.value = 'All';
-                                Array.from(genderSelect.options).forEach(opt => {
-                                    opt.disabled = opt.value !== 'All';
-                                });
-                            } catch (e) {
-                                console.warn('Could not update legacy gender select', e);
-                            }
-                        }
-
-                        // If new custom trigger exists, update its text
-                        if (genderTrigger) {
-                            genderTrigger.textContent = getFilterLabel('gender', selectedFilters.gender) + ' ▾';
-                        }
-
-                        // Optionally mark non-All items in custom menu as disabled (visual only)
-                        if (genderMenu) {
-                            genderMenu.querySelectorAll('.filter-menu-item').forEach(item => {
-                                if (!/All/i.test(item.textContent)) item.classList.add('disabled');
-                            });
-                        }
-
-                        if (genderNote) {
-                            genderNote.innerHTML = 'Gender filter is disabled for <b>Accessories (HTS-unisex category)</b>';
-                            genderNote.style.display = 'block';
-                        }
-
-                    } else {
-                        // 🔓 Restore normal behavior
-                        if (genderSelect) {
-                            try {
-                                Array.from(genderSelect.options).forEach(opt => {
-                                    opt.disabled = false;
-                                });
-                            } catch (e) {
-                                console.warn('Could not restore legacy gender select', e);
-                            }
-                        }
-
-                        if (genderMenu) {
-                            genderMenu.querySelectorAll('.filter-menu-item.disabled').forEach(item => {
-                                item.classList.remove('disabled');
-                            });
-                        }
-
-                        // ❌ Hide note for other categories
-                        if (genderNote) {
-                            genderNote.style.display = 'none';
-                            genderNote.innerHTML = '';
-                        }
-                    }
-                }
-
-        
-                    function clearResults() {
-                        document.getElementById('resultsContainer').innerHTML =
-                            '<div class="no-results">Filters reset. Please select category and country.</div>';
-                    }
 
                 function closeModal() {
                     document.getElementById('detailModal').style.display = 'none';
@@ -739,24 +344,6 @@ document.addEventListener("mouseout", e => {
     }
 });
 
-document.querySelectorAll(".filter-trigger").forEach(trigger => {
-    trigger.addEventListener("click", e => {
-        e.stopPropagation();
-
-        // ✅ CLOSE locked info tooltip when filters open
-        closeLockedInfoTooltip();
-
-        // 🔑 FORCE close category when opening any filter
-        if (appState.categoryMenuOpen) {
-            closeAllCategoryMenus();
-        }
-
-        toggleFilterMenu(trigger);
-    });
-});
-
-
-
                 document.addEventListener("click", e => {
                     const btn = e.target.closest(".copy-hts-btn");
                     if (!btn) return;
@@ -780,35 +367,6 @@ document.querySelectorAll(".filter-trigger").forEach(trigger => {
                         e.stopPropagation();
                     });
                 });
-
-                
-                // 🔥 GLOBAL CAPTURE CLICK HANDLER (runs before stopPropagation)
-document.addEventListener("click", (e) => {
-
-    const clickedFilter = e.target.closest(".filter-trigger, .filter-menu");
-    const clickedCategory = e.target.closest(".category-trigger, .category-menu");
-    const clickedInfo = e.target.closest(".info-icon");
-
-    // ✅ ALWAYS close locked tooltip when clicking ANYTHING except the icon
-    if (!clickedInfo && appState.lockedInfoIcon) {
-        appState.lockedInfoIcon.classList.remove("open", "active");
-        appState.lockedInfoIcon = null;
-        appState.openInfoIcon = null;
-    }
-
-    // Close filter menus
-    if (!clickedFilter && appState.openFilterMenu) {
-        appState.openFilterMenu.classList.remove("show");
-        appState.openFilterMenu = null;
-    }
-
-    // Close category menus
-    if (!clickedCategory && appState.categoryMenuOpen) {
-        closeAllCategoryMenus();
-    }
-
-}, true); // ⭐⭐⭐ THIS TRUE IS THE MAGIC (capture phase)
-
 
                 
                 window.filterFabricRules = function (input) {
@@ -850,7 +408,14 @@ window.showDetails = showDetails;
 
 
 selectedFilters.importingCountry = COUNTRY_ENGINE.getImportingCountry();
-
+initDOMEvents({
+    closeLockedInfoTooltip
+  });
+  
+    setupCategoryTrigger();
+    setupFilterTriggers();
+    setupGlobalClickCloser();
+  
     initializeCountries();
     buildCategoryMenu();
     initializeFilterMenus();
