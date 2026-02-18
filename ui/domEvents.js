@@ -52,6 +52,13 @@ export function setupFilterTriggers() {
 export function setupGlobalClickCloser() {
     document.addEventListener("click", (e) => {
 
+        const infoIcon = e.target.closest(".info-icon");
+        if (infoIcon) {
+            e.stopPropagation();
+            deps.toggleInfo(infoIcon);
+            return;
+        }
+
         const clickedFilter = e.target.closest(".filter-trigger, .filter-menu");
         const clickedCategory = e.target.closest(".category-trigger, .category-menu");
         const clickedInfo = e.target.closest(".info-icon");
@@ -73,3 +80,4 @@ export function setupGlobalClickCloser() {
 
     }, true);
 }
+
