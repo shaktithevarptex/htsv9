@@ -100,7 +100,7 @@ function isTenDigitHTS(htsno) {
     return digitsOnly.length === 10;
 }
 
-function getFullHierarchyText(item) {
+                function getFullHierarchyText(item) {
                         const path = getHierarchyPath(item);
                         return path.map(n => n.description.toLowerCase()).join(' ');
                     }

@@ -151,6 +151,4 @@ selectedFilters.importingCountry = COUNTRY_ENGINE.getImportingCountry();
     checkAdminMode();
     registerModalBackdropClose();
 
-    document.getElementById('fabricInfoTooltip').innerHTML = FABRIC_CLASSIFICATION_HTML;
-
 
