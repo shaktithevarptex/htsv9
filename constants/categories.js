@@ -87,7 +87,7 @@ export const CATEGORY_KEYWORDS = {
     "Carcoats": ["carcoats"],
     "Capes": ["capes"],
     "Cloaks": ["cloaks"],
-    "Anoraks": ["anoraks"],
+    "Anoraks": ["anoraks","Anoraks"],
     "Ski-Jackets": ["ski jackets", "ski-jackets"],
     "Windbreakers": ["windbreakers"],
     "Coats": ["coats"],
