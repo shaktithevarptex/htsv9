@@ -52,22 +52,21 @@ export function setupFilterTriggers() {
 export function setupGlobalClickCloser() {
     document.addEventListener("click", (e) => {
 
-        const infoIcon = e.target.closest(".info-icon");
-        if (infoIcon) {
-            e.stopPropagation();
-            deps.toggleInfo(infoIcon);
-            return;
-        }
+// ⭐ 2. Detect clicks inside tooltip OR icon
+const clickedInsideInfo =
+    e.target.closest(".info-icon") ||
+    e.target.closest(".info-tooltip");
 
-        const clickedFilter = e.target.closest(".filter-trigger, .filter-menu");
-        const clickedCategory = e.target.closest(".category-trigger, .category-menu");
-        const clickedInfo = e.target.closest(".info-icon");
+// ⭐ 3. Close tooltip if clicked anywhere else
+if (!clickedInsideInfo && appState.lockedInfoIcon) {
+    appState.lockedInfoIcon.classList.remove("open", "active");
+    appState.lockedInfoIcon = null;
+    appState.openInfoIcon = null;
+}
 
-        if (!clickedInfo && appState.lockedInfoIcon) {
-            appState.lockedInfoIcon.classList.remove("open", "active");
-            appState.lockedInfoIcon = null;
-            appState.openInfoIcon = null;
-        }
+const clickedFilter = e.target.closest(".filter-trigger, .filter-menu");
+const clickedCategory = e.target.closest(".category-trigger, .category-menu");
+
 
         if (!clickedFilter && appState.openFilterMenu) {
             appState.openFilterMenu.classList.remove("show");

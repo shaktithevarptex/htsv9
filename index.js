@@ -141,6 +141,8 @@ window.toggleInfo = toggleInfo;
 window.showInfoOnHover = showInfoOnHover;
 window.hideInfoOnHover = hideInfoOnHover;
 window.showDetails = showDetails;
+window.closeModal = closeModal;
+
 
 
 selectedFilters.importingCountry = COUNTRY_ENGINE.getImportingCountry();
@@ -157,5 +159,8 @@ selectedFilters.importingCountry = COUNTRY_ENGINE.getImportingCountry();
     loadFlatFile();
     checkAdminMode();
     registerModalBackdropClose();
+
+    // Populate fabric tooltip
+    document.getElementById('fabricInfoTooltip').innerHTML = FABRIC_CLASSIFICATION_HTML;
 
 

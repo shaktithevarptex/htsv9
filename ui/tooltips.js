@@ -180,13 +180,19 @@ export function initTooltips(getActiveCategoryAlert) {
 }
 
 export function bindInfoIconClicks() {
-    document.querySelectorAll(".info-icon").forEach(icon => {
-        icon.addEventListener("click", (e) => {
-            e.stopPropagation();      // ⭐ prevent global closer
-            toggleInfo(icon);         // ⭐ lock/unlock tooltip
-        });
+    // Event delegation — works for dynamically injected tooltips (fabric)
+    document.addEventListener("click", (e) => {
+        const icon = e.target.closest(".info-icon");
+        if (!icon) return;
+
+        // Ignore clicks inside tooltip content
+        if (e.target.closest(".info-tooltip")) return;
+
+        e.stopPropagation();
+        toggleInfo(icon);
     });
 }
+
 
 export { toggleInfo, showInfoOnHover, hideInfoOnHover };
 
